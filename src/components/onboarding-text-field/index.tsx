@@ -1,4 +1,4 @@
-import React, { FC, useState } from "react";
+import React, { FC, useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   KeyboardTypeOptions,
@@ -9,7 +9,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { theme } from "../../utils/colors";
 import { Send } from "../../utils/icons";
 
@@ -20,6 +23,9 @@ export type OnboardingTextFieldProps = {
   keyboard: KeyboardTypeOptions;
   regex?: RegExp;
   errorLabel: string;
+  ref?: React.LegacyRef<TextInput>;
+  value: string;
+  validationSuccess?: (value: string) => void;
 };
 
 const OnboardingTextField: FC<OnboardingTextFieldProps> = ({
@@ -27,47 +33,72 @@ const OnboardingTextField: FC<OnboardingTextFieldProps> = ({
   prefix,
   keyboard,
   regex,
+  errorLabel,
+  ref,
+  value,
+  validationSuccess,
 }) => {
   const [isValid, setIsValid] = useState<boolean>(true);
-  const validateFleld = (text: string) => {
-    if (regex) {
-      setIsValid(regex.test(text));
+  const [internalText, setInternalText] = useState<string>(value);
+
+  useEffect(() => {
+    setInternalText(value);
+  }, [value]);
+
+  const validateField = (text: string) => {
+    if (!regex) {
+      return true;
+    }
+    return regex && regex.test(text);
+  };
+
+  const onPressSend = () => {
+    const validation = validateField(internalText);
+    setIsValid(validation);
+    if (validation) {
+      validationSuccess && validationSuccess(internalText);
     }
   };
 
-  const TextView = () => (
-    <SafeAreaView edges={["bottom"]}>
-      <View style={style.container}>
-        <View style={style.fieldLabelContainer}>
-          <Text style={style.fieldLabel}>{label}</Text>
+  const textView = () => (
+    <View style={style.container}>
+      <View style={style.fieldLabelContainer}>
+        <Text
+          style={[style.fieldLabel, { color: isValid ? "#636682" : "#FF5454" }]}
+        >
+          {isValid ? label : errorLabel}
+        </Text>
+      </View>
+      <View style={style.divider} />
+      <View style={style.middleContainer}>
+        {prefix && <Text style={style.prefix}>{prefix}</Text>}
+        <View style={style.textInputContainer}>
+          <TextInput
+            keyboardType={keyboard}
+            style={style.textInput}
+            value={internalText}
+            onChangeText={(text) => {
+              setInternalText(text);
+            }}
+          />
         </View>
-        <View style={style.divider} />
-        <View style={style.middleContainer}>
-          {prefix && <Text style={style.prefix}>{prefix}</Text>}
-          <View style={style.textInputContainer}>
-            <TextInput
-              style={style.textInput}
-              keyboardType={keyboard}
-              onChangeText={(text) => {
-                validateFleld(text);
-              }}
-            />
-          </View>
-          <View style={style.rightButtonContainer}>
-            <TouchableOpacity activeOpacity={0.8}>
-              <Send />
-            </TouchableOpacity>
-          </View>
+        <View style={style.rightButtonContainer}>
+          <TouchableOpacity activeOpacity={0.8} onPress={onPressSend}>
+            <Send />
+          </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 
   return Platform.OS === "android" ? (
-    <TextView />
+    textView()
   ) : (
-    <KeyboardAvoidingView behavior="position" keyboardVerticalOffset={54}>
-      <TextView />
+    <KeyboardAvoidingView
+      behavior="padding"
+      keyboardVerticalOffset={-useSafeAreaInsets().bottom}
+    >
+      <SafeAreaView edges={["bottom"]}>{textView()}</SafeAreaView>
     </KeyboardAvoidingView>
   );
 };

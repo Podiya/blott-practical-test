@@ -2,13 +2,13 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
 import { StatusBar } from "react-native";
-import EnterEmailScreen from "./src/screens/enter-email-screen";
+import OnboardingScreen from "./src/screens/onboarding-screen";
 import { theme } from "./src/utils/colors";
 
 interface AppProps {}
 
 export type RootStackParamList = {
-  EnterEmailScreen: undefined;
+  OnboardingScreen: undefined;
 };
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
@@ -18,14 +18,14 @@ const App = () => {
     <NavigationContainer>
       <StatusBar backgroundColor={theme.background} barStyle="light-content" />
       <RootStack.Navigator
-        initialRouteName="EnterEmailScreen"
+        initialRouteName="OnboardingScreen"
         screenOptions={{
           headerShown: false,
         }}
       >
         <RootStack.Screen
-          name="EnterEmailScreen"
-          component={EnterEmailScreen}
+          name="OnboardingScreen"
+          component={OnboardingScreen}
         />
       </RootStack.Navigator>
     </NavigationContainer>
