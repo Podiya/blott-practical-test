@@ -1,5 +1,6 @@
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useEffect, useRef, useState } from "react";
 import {
+  Animated,
   KeyboardAvoidingView,
   KeyboardTypeOptions,
   Platform,
@@ -14,7 +15,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { theme } from "../../utils/colors";
-import { Send } from "../../utils/icons";
+import { Cancel, Send } from "../../utils/icons";
 
 export type OnboardingTextFieldProps = {
   label: string;
@@ -25,7 +26,10 @@ export type OnboardingTextFieldProps = {
   errorLabel: string;
   ref?: React.LegacyRef<TextInput>;
   value: string;
-  validationSuccess?: (value: string) => void;
+  validationSuccess?: () => void;
+  onChangeValue?: (value: string) => void;
+  didFocus?: () => void;
+  didBlur?: () => void;
 };
 
 const OnboardingTextField: FC<OnboardingTextFieldProps> = ({
@@ -37,9 +41,14 @@ const OnboardingTextField: FC<OnboardingTextFieldProps> = ({
   ref,
   value,
   validationSuccess,
+  onChangeValue,
+  didFocus,
+  didBlur,
 }) => {
   const [isValid, setIsValid] = useState<boolean>(true);
   const [internalText, setInternalText] = useState<string>(value);
+  const labelOpacity = useState(new Animated.Value(1))[0];
+  const textInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     setInternalText(value);
@@ -52,41 +61,80 @@ const OnboardingTextField: FC<OnboardingTextFieldProps> = ({
     return regex && regex.test(text);
   };
 
+  const validityAnimation = (value: boolean) => {
+    Animated.timing(labelOpacity, {
+      toValue: 0,
+      duration: 100,
+      useNativeDriver: true,
+    }).start(() => {
+      setIsValid(value);
+      Animated.timing(labelOpacity, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }).start(() => {});
+    });
+  };
+
   const onPressSend = () => {
-    const validation = validateField(internalText);
-    setIsValid(validation);
-    if (validation) {
-      validationSuccess && validationSuccess(internalText);
+    if (!isValid) {
+      validityAnimation(true);
+      setInternalText("");
+      onChangeValue && onChangeValue("");
+    } else {
+      const validation = validateField(internalText);
+      validityAnimation(validation);
+      if (validation) {
+        validationSuccess && validationSuccess();
+      }
     }
+  };
+
+  const renderSendCancelButton = () => {
+    var button = () => (isValid ? <Send /> : <Cancel />);
+    return (
+      <View style={style.rightButtonContainer}>
+        <TouchableOpacity activeOpacity={0.8} onPress={onPressSend}>
+          {button()}
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   const textView = () => (
     <View style={style.container}>
       <View style={style.fieldLabelContainer}>
-        <Text
-          style={[style.fieldLabel, { color: isValid ? "#636682" : "#FF5454" }]}
+        <Animated.Text
+          style={[
+            style.fieldLabel,
+            { color: isValid ? "#636682" : "#FF5454", opacity: labelOpacity },
+          ]}
         >
           {isValid ? label : errorLabel}
-        </Text>
+        </Animated.Text>
       </View>
       <View style={style.divider} />
       <View style={style.middleContainer}>
         {prefix && <Text style={style.prefix}>{prefix}</Text>}
         <View style={style.textInputContainer}>
           <TextInput
+            ref={textInputRef}
             keyboardType={keyboard}
             style={style.textInput}
             value={internalText}
             onChangeText={(text) => {
+              if (!isValid) {
+                validityAnimation(true);
+              }
               setInternalText(text);
+              onChangeValue && onChangeValue(text);
             }}
+            selectionColor={"white"}
+            onBlur={() => didBlur && didBlur()}
+            onFocus={() => didFocus && didFocus()}
           />
         </View>
-        <View style={style.rightButtonContainer}>
-          <TouchableOpacity activeOpacity={0.8} onPress={onPressSend}>
-            <Send />
-          </TouchableOpacity>
-        </View>
+        {renderSendCancelButton()}
       </View>
     </View>
   );

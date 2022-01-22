@@ -1,6 +1,12 @@
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import React, { FC, useRef, useState } from "react";
-import { KeyboardAvoidingView, StyleSheet, View } from "react-native";
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  StyleSheet,
+  TouchableWithoutFeedback,
+  View,
+} from "react-native";
 import PagerView, {
   PagerViewOnPageSelectedEvent,
 } from "react-native-pager-view";
@@ -19,7 +25,7 @@ type OnboardingScreenProps = NativeStackScreenProps<
   "OnboardingScreen"
 >;
 
-const OnboardingScreen: FC<OnboardingScreenProps> = () => {
+const OnboardingScreen: FC<OnboardingScreenProps> = ({ navigation }) => {
   const pagerRef = useRef<PagerView>(null);
   const [textFields, setTextFields] = useState<OnboardingTextFieldProps[]>([
     {
@@ -33,6 +39,11 @@ const OnboardingScreen: FC<OnboardingScreenProps> = () => {
       regex:
         /^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()\.,;\s@\"]+\.{0,1})+([^<>()\.,;:\s@\"]{2,}|[\d\.]+))$/,
       value: "",
+      onChangeValue: (value) => {
+        var fields = textFields;
+        fields[0].value = value;
+        setTextFields([...fields]);
+      },
     },
     {
       errorLabel: "Looks wrong",
@@ -40,12 +51,20 @@ const OnboardingScreen: FC<OnboardingScreenProps> = () => {
       label: "Enter your mobile number",
       prefix: "+11",
       type: "number",
-      validationSuccess: (value) => {},
-      regex: /[2-9]{2}\d{8}/,
+      validationSuccess: () => {
+        navigation.push("EFTPaymentScreen");
+      },
+      regex: /^\d{10}$/,
       value: "",
+      onChangeValue: (value) => {
+        var fields = textFields;
+        fields[1].value = value;
+        setTextFields([...fields]);
+      },
     },
   ]);
   const [currentPage, setCurrentPage] = useState<number>(0);
+  const [isTyping, setIsTyping] = useState<boolean>(false);
 
   return (
     <View style={style.screen}>
@@ -58,26 +77,32 @@ const OnboardingScreen: FC<OnboardingScreenProps> = () => {
         }}
       />
       <KeyboardAvoidingView style={style.container}>
-        <View style={{ flexGrow: 1 }}>
-          <PagerView
-            style={{ flex: 1 }}
-            initialPage={0}
-            ref={pagerRef}
-            scrollEnabled={false}
-            onPageSelected={(event: PagerViewOnPageSelectedEvent) => {
-              setCurrentPage(event.nativeEvent.position);
-            }}
-          >
-            <View>
-              <EnterEmailView />
-            </View>
-            <View>
-              <EnterPhoneNumberView />
-            </View>
-          </PagerView>
-        </View>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={{ flexGrow: 1 }}>
+            <PagerView
+              style={{ flex: 1 }}
+              initialPage={0}
+              ref={pagerRef}
+              scrollEnabled={false}
+              onPageSelected={(event: PagerViewOnPageSelectedEvent) => {
+                setCurrentPage(event.nativeEvent.position);
+              }}
+            >
+              <View>
+                <EnterEmailView isTyping={isTyping} />
+              </View>
+              <View>
+                <EnterPhoneNumberView isTyping={isTyping} />
+              </View>
+            </PagerView>
+          </View>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-      <OnboardingTextField {...textFields[currentPage]} />
+      <OnboardingTextField
+        {...textFields[currentPage]}
+        didBlur={() => setIsTyping(false)}
+        didFocus={() => setIsTyping(true)}
+      />
     </View>
   );
 };
